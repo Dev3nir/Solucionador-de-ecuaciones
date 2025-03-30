@@ -17,6 +17,10 @@ class Polinomica:
         terminos = [f"{c}x^{i}" if i > 0 else str(c) for i, c in enumerate(self.coeficientes) if c != 0]
         return " + ".join(terminos).replace("x^1", "x")
 
+    def derivar(self, x):
+        """Derivada de un polinomio: d/dx(a0 + a1*x + ...) = a1 + 2*a2*x + ..."""
+        return sum(i * self.coeficientes[i] * (x ** (i - 1)) for i in range(1, len(self.coeficientes)))
+    
 class Trigonometrica:
     def __init__(self, A, B, C, D, E, F):
         """
@@ -36,3 +40,10 @@ class Trigonometrica:
     def __str__(self):
         """Devuelve una representación bonita de la función."""
         return f"{self.A}sin({self.B}x + {self.C}) + {self.D}cos({self.E}x + {self.F})"
+
+    def derivar(self, x):
+        """Derivada de A*sin(Bx + C) + D*cos(Ex + F)"""
+        return (
+            self.A * self.B * np.cos(self.B * x + self.C) -
+            self.D * self.E * np.sin(self.E * x + self.F)
+        )

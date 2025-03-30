@@ -3,8 +3,10 @@ import sympy as sp
 from Funciones import Polinomica, Trigonometrica
 import re
 import matplotlib.pyplot as plt
-from Secante import Secante 
-
+from Secante import Secante
+from Regla_Falsa import Regla_Falsa
+from Newton import Newton
+from Biseccion import Biseccion
 
 ##-------------------------------------------------------------------------------------------
 #-----------------------------
@@ -91,6 +93,11 @@ def graficar_error(iteraciones_values, iteraciones_error):
     plt.grid(True, linestyle='--', linewidth=0.3)
     plt.show()
 
+import threading
+
+def graficar_error_async(iteraciones_values, iteraciones_error):
+    threading.Thread(target=graficar_error, args=(iteraciones_values, iteraciones_error), daemon=True).start()
+
 
 ## RESUELVE LA EC. SEGÚN EL MÉTODO ESCOGIDO USANDO LAS CLASES DE LOS MÉTODOS
 def res():
@@ -100,13 +107,30 @@ def res():
 
     if metodo == "Bisección":
         x0 = convertir_a_numero(dpg.get_value("biseccion_x0"))
+        x1 = convertir_a_numero(dpg.get_value("biseccion_x1"))
         criterio = dpg.get_value("criterio_paro")
+        
+        f_x0 = funcion.evaluar(x0)
+        f_x1 = funcion.evaluar(x1)
+        
+        if f_x0 * f_x1 > 0:
+            dpg.set_value("resultado_texto", "Error: El intervalo [x0, x1] debe tener signos opuestos en f(x).")
+            return  # Detener el proceso si no cumple la condición
         
         if criterio == "Número de iteraciones":
             limite = int(dpg.get_value("input_iteraciones"))
+            limite_e = None 
         else:
-            limite = float(dpg.get_value("input_error"))
-        #Mandar llamar al método y pasar valores
+            limite_e = float(dpg.get_value("input_error"))
+            limite = None  # Para evitar valores basura
+        
+        print(f"Criterio: {criterio}, Límite: {limite_e}")
+        print(f"Criterio recibido: '{criterio}'")
+        solucionador = Biseccion(funcion, x0, x1, criterio, limite, limite_e)  
+        raiz, iteraciones, error = solucionador.resolver()
+        
+        dpg.set_value("resultado_texto", f"Raíz encontrada en el intervalo: {raiz} con error de {error:.5f}% \nNúmero de iteraciones: {iteraciones}" if raiz is not None else "No se encontró raíz")
+        graficar_error_async(solucionador.iteraciones_values, solucionador.iteraciones_error)
         
     if metodo == "Newton":
         x0 = convertir_a_numero(dpg.get_value("newton_x0"))
@@ -114,9 +138,18 @@ def res():
         
         if criterio == "Número de iteraciones":
             limite = int(dpg.get_value("input_iteraciones"))
+            limite_e = None
         else:
-            limite = float(dpg.get_value("input_error"))
-        #Mandar llamar al método y pasar valores
+            limite_e = float(dpg.get_value("input_error"))
+            limite= None
+        
+        print(f"Criterio: {criterio}, Límite: {limite_e}")
+        print(f"Criterio recibido: '{criterio}'")
+        solucionador = Newton(funcion, x0, criterio, limite, limite_e)  
+        raiz, iteraciones, error = solucionador.resolver()
+        
+        dpg.set_value("resultado_texto", f"Raíz encontrada en el intervalo: {raiz} con error de {error:.5f}% \nNúmero de iteraciones: {iteraciones}" if raiz is not None else "No se encontró raíz")
+        graficar_error_async(solucionador.iteraciones_values, solucionador.iteraciones_error)
     
     if metodo == "Secante":
         x0 = convertir_a_numero(dpg.get_value("secante_x0"))
@@ -133,6 +166,32 @@ def res():
         print(f"Criterio recibido: '{criterio}'")
         solucionador = Secante(funcion, x0, x1, criterio, limite, limite_e)
         raiz, iteraciones, error = solucionador.resolver()
+
+        dpg.set_value("resultado_texto", f"Raíz encontrada en el intervalo: {raiz} con error de {error:.5f}% \nNúmero de iteraciones: {iteraciones}" if raiz is not None else "No se encontró raíz")
+        graficar_error(solucionador.iteraciones_values, solucionador.iteraciones_error)
+    
+    if metodo == "Regla Falsa":
+        x0 = convertir_a_numero(dpg.get_value("reglafalsa_x0"))
+        x1 = convertir_a_numero(dpg.get_value("reglafalsa_x1"))
+        criterio = dpg.get_value("criterio_paro")
+        
+        f_x0 = funcion.evaluar(x0)
+        f_x1 = funcion.evaluar(x1)
+        
+        if f_x0 * f_x1 > 0:
+            dpg.set_value("resultado_texto", "Error: El intervalo [x0, x1] debe tener signos opuestos en f(x).")
+            return  # Detener el proceso si no cumple la condición
+        
+        if criterio == "Número de iteraciones":
+            limite = int(dpg.get_value("input_iteraciones"))
+            limite_e = None 
+        else:
+            limite_e = float(dpg.get_value("input_error"))
+            limite = None  # Para evitar valores basura
+        print(f"Criterio: {criterio}, Límite: {limite_e}")
+        print(f"Criterio recibido: '{criterio}'")
+        solucionador = Regla_Falsa(funcion, x0, x1, criterio, limite, limite_e)
+        raiz, iteraciones, error = solucionador.resolver_Regla_Falsa()
 
         dpg.set_value("resultado_texto", f"Raíz encontrada en el intervalo: {raiz} con error de {error:.5f}% \nNúmero de iteraciones: {iteraciones}" if raiz is not None else "No se encontró raíz")
         graficar_error(solucionador.iteraciones_values, solucionador.iteraciones_error)
@@ -197,6 +256,11 @@ def interfaz():
                 dpg.configure_item("grupo_secante", show=True)
             else:
                 dpg.configure_item("grupo_secante", show=False)
+                
+            if metodo == "Regla Falsa":
+                dpg.configure_item("grupo_regla_falsa", show=True)
+            else:
+                dpg.configure_item("grupo_regla_falsa", show=False)
 
         #Mostrar campos según el criterio
         def actualizar_inputs_criterio():
